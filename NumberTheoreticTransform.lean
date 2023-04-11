@@ -5,11 +5,11 @@ namespace Matrix
 
 
 def size : ℕ := 16
-def vektor : Type := Fin size → ZMod size.succ
+def vektor : Type := Fin size → Fin size.succ
 
 
 def transform (ω : ZMod size.succ) (x : vektor) : vektor :=
-fun i => dotProduct x (fun j => ω ^ (i.val * j.val))
+fun i => dotProduct (fun j => ω ^ (i.val * j.val)) x
 
 def NNS : vektor → vektor := transform 3
 
