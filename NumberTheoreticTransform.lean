@@ -1,36 +1,25 @@
 import Mathlib.Data.ZMod.Defs
 import Mathlib.LinearAlgebra.Matrix.DotProduct
-import Mathlib.Algebra.BigOperators.Order
 
 namespace Matrix
 
-def vektor : Type := Fin 4 → ZMod 5
 
-def NNT (x : vektor) : vektor :=
-![1 * x 0 + 1 * x 1 + 1 * x 2 + 1 * x 3,
-  1 * x 0 + 2 * x 1 + 4 * x 2 + 3 * x 3,
-  1 * x 0 + 4 * x 1 + 1 * x 2 + 4 * x 3,
-  1 * x 0 + 3 * x 1 + 4 * x 2 + 2 * x 3]
+def size : ℕ := 16
+def vektor : Type := Fin size → ZMod size.succ
 
-def NNS (x : vektor) : vektor :=
-![1 * x 0 + 1 * x 1 + 1 * x 2 + 1 * x 3,
-  1 * x 0 + 3 * x 1 + 4 * x 2 + 2 * x 3,
-  1 * x 0 + 4 * x 1 + 1 * x 2 + 4 * x 3,
-  1 * x 0 + 2 * x 1 + 4 * x 2 + 3 * x 3]
 
-#eval NNT $ NNS ![1, 1, 4, 4]
-#eval NNS $ NNT ![0, 3, 1, 0]
+def transform (ω : ZMod size.succ) (x : vektor) : vektor :=
+fun i => dotProduct x (fun j => ω ^ (i.val * j.val))
 
-def NT (ω : ZMod 5) (x : vektor) : vektor :=
-fun i => x 0 + ω ^ (i.val) * x 1 + ω ^ (2 * i.val) * x 2 + ω ^ (3 * i.val) * x 3
+def NNS : vektor → vektor := transform 3
 
-def NN (ω : ZMod 5) (x : vektor) : vektor :=
-fun i => dotProduct x (fun j => ω ^ (j.val*i.val))
+def negate (x : vektor) : vektor :=
+fun i => - (x i)
 
-def NNT' := NN 2
-def NNS' := NN 3
+def NNT : vektor → vektor := negate ∘ transform 6
 
-#eval NNT  ![0, 3, 1, 0]
-#eval NNT' ![0, 3, 1, 0]
-#eval NNS  ![0, 3, 1, 0]
-#eval NNS' ![0, 3, 1, 0]
+
+#eval NNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
+#eval NNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
+#eval NNT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
+#eval NNT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
