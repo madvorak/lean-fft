@@ -11,20 +11,22 @@ def M : ℕ := 2^e + 1
 def vektor : Type := Fin (2^e) → ZMod M
 
 
-def transform (n : ℕ) (ω : ZMod M) (x : Fin n → ZMod M) : (Fin n → ZMod M) :=
-fun (i : Fin n) => dotProduct (fun (j : Fin n) => ω ^ ((i : ℕ) * (j : ℕ))) x
+def transform (t : ℕ) (ω : ZMod M) (x : Fin (2^t) → ZMod M) : (Fin (2^t) → ZMod M) :=
+fun (i : Fin (2^t)) => dotProduct (fun (j : Fin (2^t)) => ω ^ ((i : ℕ) * (j : ℕ))) x
 
-def NNS : vektor → vektor := transform (2^e) 3
+def NNS : vektor → vektor := transform e 3
 
 def negate (x : vektor) : vektor :=
 fun i => - (x i)
 
-def NNT : vektor → vektor := negate ∘ transform (2^e) 6
+def NNT : vektor → vektor := negate ∘ transform e 6
 
+/-
 #eval NNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
 #eval NNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
 #eval NNT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
 #eval NNT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
+-/
 
 
 lemma two_mul_two_pow_pred {n : ℕ} (npos : n > 0) : 2 * 2 ^ (n-1) = 2 ^ n := by
@@ -48,7 +50,7 @@ Prod.mk
   (fun (k : Fin (2 ^ (t-1))) => x ⟨2 * (k : ℕ), Nat.lt_of_succ_lt (index_ok tpos k)⟩)
   (fun (k : Fin (2 ^ (t-1))) => x ⟨2 * (k : ℕ) + 1, index_ok tpos k⟩)
 
-partial def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (2^t) → ZMod M) : Fin (2^t) → ZMod M :=
+def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (2^t) → ZMod M) : (Fin (2^t) → ZMod M) :=
 dite (t = 0)
   (fun _ => x)
   (fun ht =>
@@ -79,7 +81,13 @@ dite (t = 0)
 def FNNS : vektor → vektor := transform_fast e 3
 def FNNT : vektor → vektor := negate ∘ transform_fast e 6
 
+/-
 #eval FNNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
 #eval FNNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
 #eval FNNT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
 #eval FNNT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
+-/
+
+
+theorem transform_fast_correct : transform = transform_fast := by
+  sorry
