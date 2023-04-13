@@ -2,6 +2,7 @@ import Mathlib.Data.ZMod.Defs
 import Mathlib.LinearAlgebra.Matrix.DotProduct
 import Mathlib.Tactic.LibrarySearch
 import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.Cases
 
 namespace Matrix
 
@@ -51,32 +52,31 @@ Prod.mk
   (fun (k : Fin (2 ^ (t-1))) => x ⟨2 * (k : ℕ) + 1, index_ok tpos k⟩)
 
 def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (2^t) → ZMod M) : (Fin (2^t) → ZMod M) :=
-dite (t = 0)
-  (fun _ => x)
-  (fun ht =>
-    let p := splitter (Iff.mpr zero_lt_iff ht) x
-    let a := transform_fast (t - 1) (ω * ω) p.1
-    let b := transform_fast (t - 1) (ω * ω) p.2
-    fun (i : Fin (2^t)) =>
-      let j : ℕ := i
-      dite ((j : ℕ) < 2 ^ (t-1))
-        (fun hj =>
-          let J : Fin (2 ^ (t-1)) := ⟨j, hj⟩
-          a J + ω ^ j * b J)
-        (fun hj =>
-          let j' : ℕ := j - 2 ^ (t-1)
-          let J' : Fin (2 ^ (t-1)) := ⟨j', by {
-            show j - 2 ^ (t-1) < 2 ^ (t-1)
-            have hh : j < 2 ^ (t-1) + 2 ^ (t-1)
-            · convert_to j < 2 * 2 ^ (t-1)
-              · ring
-              rw [two_mul_two_pow_pred (Iff.mpr zero_lt_iff ht)]
-              exact Fin.is_lt i
-            push_neg at hj
-            rwa [←tsub_lt_iff_right hj] at hh
-          }⟩
-          a J' - ω ^ j' * b J')
-  )
+if ht : t = 0
+then x
+else
+  let p := splitter (Iff.mpr zero_lt_iff ht) x
+  let a := transform_fast (t - 1) (ω * ω) p.1
+  let b := transform_fast (t - 1) (ω * ω) p.2
+  fun (i : Fin (2^t)) =>
+    let j : ℕ := i
+    if hj : (j : ℕ) < 2 ^ (t-1)
+    then
+      let J : Fin (2 ^ (t-1)) := ⟨j, hj⟩
+      a J + ω ^ j * b J
+    else
+      let j' : ℕ := j - 2 ^ (t-1)
+      let J' : Fin (2 ^ (t-1)) := ⟨j', by {
+        show j - 2 ^ (t-1) < 2 ^ (t-1)
+        have hh : j < 2 ^ (t-1) + 2 ^ (t-1)
+        · convert_to j < 2 * 2 ^ (t-1)
+          · ring
+          rw [two_mul_two_pow_pred (Iff.mpr zero_lt_iff ht)]
+          exact Fin.is_lt i
+        push_neg at hj
+        rwa [←tsub_lt_iff_right hj] at hh
+      }⟩
+      a J' - ω ^ j' * b J'
 
 def FNNS : vektor → vektor := transform_fast e 3
 def FNNT : vektor → vektor := negate ∘ transform_fast e 6
@@ -90,4 +90,24 @@ def FNNT : vektor → vektor := negate ∘ transform_fast e 6
 
 
 theorem transform_fast_correct : transform = transform_fast := by
+  --ext t ω x j
+  apply funext
+  intro t
+  induction' t with n ih
+  · ext ω x j
+    have j_zero : j = 0
+    · cases' j with v proo
+      have value_zero : v = 0
+      · exact Iff.mp Nat.lt_one_iff proo
+      exact Fin.ext value_zero
+    rw [j_zero]
+    unfold transform transform_fast dotProduct
+    simp
+  ext ω x j
+  unfold transform transform_fast dotProduct
+  have clearly_impossible : ¬ (Nat.succ n = 0)
+  · exact Bool.of_decide_false rfl
+  --simp_rw [clearly_impossible]
+  --rw [dite_false]
+  simp [clearly_impossible]
   sorry
