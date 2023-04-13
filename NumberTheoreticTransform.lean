@@ -79,18 +79,20 @@ theorem transform_fast_correct : transform = transform_fast := by
   ext ω x j
   unfold transform_fast
   rw [←ih]
-  by_cases hj : j.val < level n
-  · let J : Fin (level n) := ⟨j.val, hj⟩
-    --let c := Fin.castAdd (level n) j
-    convert_to transform (Nat.succ n) ω x j =
-      let p := splitter x
-      let a := transform n (ω * ω) p.fst
-      let b := transform n (ω * ω) p.snd
-      (fun j => a j + ω ^ j.val * b j) J
-    · simp --simp_rw [←Fin.append_left]
-      sorry
-    show transform (Nat.succ n) ω x j =
-      let p := splitter x
-      transform n (ω * ω) p.fst J + ω ^ j.val * transform n (ω * ω) p.snd J
+  induction' j using Fin.addCases with i i'
+  · have append_lef :
+      @Fin.append (level (n+0)) (level (n+0)) (ZMod M)
+        (fun j => transform n (ω * ω) (splitter x).fst j + ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
+        (fun j => transform n (ω * ω) (splitter x).fst j - ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
+        ((Fin.castAdd (level n) : Fin (level (n)) ↪o Fin (level n + level n)).toEmbedding i) =
+      transform n (ω * ω) (splitter x).fst i + ω ^ i.val * transform n (ω * ω) (splitter x).snd i
+    · apply Fin.append_left
+    /-exact
+        Fin.append_left
+          (fun j => transform n (ω * ω) (splitter x).fst j + ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
+          (fun j => transform n (ω * ω) (splitter x).fst j - ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
+          i-/
+    rw [append_lef] -- Do not apply `Fin.append_left` directly !!!
+    clear append_lef
     sorry
   · sorry
