@@ -22,13 +22,6 @@ fun i => - (x i)
 
 def NTT : vektor → vektor := negate ∘ transform e 6
 
-/-
-#eval NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval NTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval NTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
--/
-
 
 lemma index_ok {t : ℕ} (i : Fin (2 ^ t)) : 2 * (i : ℕ) + 1 < 2 ^ t.succ := by
   show 2 * (i : ℕ) + 2 ≤ 2 ^ t.succ
@@ -70,9 +63,14 @@ match t with
 def FNTS : vektor → vektor := transform_fast e 3
 def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 
+
+#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
 #eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
+#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
 #eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
+#eval  NTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
 #eval FNTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
+#eval  NTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 #eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 
 
@@ -93,4 +91,12 @@ theorem transform_fast_correct : transform = transform_fast := by
   ext ω x j
   unfold transform_fast
   rw [←ih]
+  by_cases hj : (j : ℕ) < 2^n
+  · simp [hj]
+    unfold splitter
+    simp
+    convert_to
+      transform (Nat.succ n) ω x j =
+      _ + _
+    sorry
   sorry
