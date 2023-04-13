@@ -15,78 +15,65 @@ def vektor : Type := Fin (2^e) → ZMod M
 def transform (t : ℕ) (ω : ZMod M) (x : Fin (2^t) → ZMod M) : (Fin (2^t) → ZMod M) :=
 fun (i : Fin (2^t)) => dotProduct (fun (j : Fin (2^t)) => ω ^ ((i : ℕ) * (j : ℕ))) x
 
-def NNS : vektor → vektor := transform e 3
+def NTS : vektor → vektor := transform e 3
 
 def negate (x : vektor) : vektor :=
 fun i => - (x i)
 
-def NNT : vektor → vektor := negate ∘ transform e 6
+def NTT : vektor → vektor := negate ∘ transform e 6
 
 /-
-#eval NNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval NNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval NNT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval NNT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
+#eval NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
+#eval NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
+#eval NTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
+#eval NTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 -/
 
 
-lemma two_mul_two_pow_pred {n : ℕ} (npos : n > 0) : 2 * 2 ^ (n-1) = 2 ^ n := by
-  let m := n - 1
-  have hm : n = m + 1
-  · exact Iff.mp (tsub_eq_iff_eq_add_of_le npos) rfl
-  convert_to 2 * 2 ^ m = 2 ^ (m+1)
-  · rw [hm]
-  exact Eq.symm (pow_succ'' m 2)
+lemma index_ok {t : ℕ} (i : Fin (2 ^ t)) : 2 * (i : ℕ) + 1 < 2 ^ t.succ := by
+  show 2 * (i : ℕ) + 2 ≤ 2 ^ t.succ
+  convert_to 2 * ((i : ℕ) + 1) ≤ 2 * 2 ^ t
+  · rw [pow_succ]
+  apply LinearOrderedCommMonoid.mul_le_mul_left
+  exact Fin.is_lt i
 
-lemma index_ok {t : ℕ} (tpos : t > 0) (k : Fin (2 ^ (t-1))) : 2 * (k : ℕ) + 1 < 2 ^ t := by
-  show 2 * (k : ℕ) + 2 ≤ 2 ^ t
-  have hk : 2 * ((k : ℕ) + 1) ≤ 2 * (2 ^ (t-1))
-  · apply LinearOrderedCommMonoid.mul_le_mul_left
-    exact Fin.is_lt k
-  rwa [mul_add, mul_one, two_mul_two_pow_pred tpos] at hk
-
-def splitter {t : ℕ} (tpos : t > 0) (x : Fin (2 ^ t) → ZMod M) :
-  (Fin (2 ^ (t-1)) → ZMod M) × (Fin (2 ^ (t-1)) → ZMod M) :=
+def splitter {t : ℕ} (x : Fin (2 ^ t.succ) → ZMod M) :
+  (Fin (2 ^ t) → ZMod M) × (Fin (2 ^ t) → ZMod M) :=
 Prod.mk
-  (fun (k : Fin (2 ^ (t-1))) => x ⟨2 * (k : ℕ), Nat.lt_of_succ_lt (index_ok tpos k)⟩)
-  (fun (k : Fin (2 ^ (t-1))) => x ⟨2 * (k : ℕ) + 1, index_ok tpos k⟩)
+  (fun (i : Fin (2 ^ t)) => x ⟨2 * (i : ℕ), Nat.lt_of_succ_lt (index_ok i)⟩)
+  (fun (i : Fin (2 ^ t)) => x ⟨2 * (i : ℕ) + 1, index_ok i⟩)
 
 def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (2^t) → ZMod M) : (Fin (2^t) → ZMod M) :=
-if ht : t = 0
-then x
-else
-  let p := splitter (Iff.mpr zero_lt_iff ht) x
-  let a := transform_fast (t - 1) (ω * ω) p.1
-  let b := transform_fast (t - 1) (ω * ω) p.2
-  fun (i : Fin (2^t)) =>
+match t with
+| 0   => x
+| n+1 =>
+  let p := splitter x
+  let a := transform_fast n (ω * ω) p.1
+  let b := transform_fast n (ω * ω) p.2
+  fun (i : Fin (2 ^ (n+1))) =>
     let j : ℕ := i
-    if hj : (j : ℕ) < 2 ^ (t-1)
+    if hj : (j : ℕ) < 2 ^ n
     then
-      let J : Fin (2 ^ (t-1)) := ⟨j, hj⟩
+      let J : Fin (2 ^ n) := ⟨j, hj⟩
       a J + ω ^ j * b J
     else
-      let j' : ℕ := j - 2 ^ (t-1)
-      let J' : Fin (2 ^ (t-1)) := ⟨j', by {
-        show j - 2 ^ (t-1) < 2 ^ (t-1)
-        have hh : j < 2 ^ (t-1) + 2 ^ (t-1)
-        · convert_to j < 2 * 2 ^ (t-1)
-          · ring
-          rw [two_mul_two_pow_pred (Iff.mpr zero_lt_iff ht)]
-          exact Fin.is_lt i
+      let j' : ℕ := j - 2 ^ n
+      let J' : Fin (2 ^ n) := ⟨j', by {
         push_neg at hj
-        rwa [←tsub_lt_iff_right hj] at hh
+        have hh : j < 2 ^ (n + 1)
+        · exact Fin.is_lt i
+        rw [pow_succ, two_mul, ←tsub_lt_iff_right hj] at hh
+        exact hh
       }⟩
       a J' - ω ^ j' * b J'
 
-def FNNS : vektor → vektor := transform_fast e 3
-def FNNT : vektor → vektor := negate ∘ transform_fast e 6
+def FNTS : vektor → vektor := transform_fast e 3
+def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 
-/-
-#eval FNNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval FNNS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval FNNT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval FNNT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
--/
+#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
+#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
+#eval FNTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
+#eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 
 
 theorem transform_fast_correct : transform = transform_fast := by
@@ -104,10 +91,6 @@ theorem transform_fast_correct : transform = transform_fast := by
     unfold transform transform_fast dotProduct
     simp
   ext ω x j
-  unfold transform transform_fast dotProduct
-  have clearly_impossible : ¬ (Nat.succ n = 0)
-  · exact Bool.of_decide_false rfl
-  --simp_rw [clearly_impossible]
-  --rw [dite_false]
-  simp [clearly_impossible]
+  unfold transform_fast
+  rw [←ih]
   sorry
