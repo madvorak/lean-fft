@@ -50,6 +50,7 @@ match t with
     (fun j => a j - ω ^ j.val * b j)
 
 def FNTS : vektor → vektor := transform_fast e 3
+
 def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 
 /-
@@ -63,53 +64,32 @@ def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 #eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 -/
 
-lemma lemmma (N : ℕ) (f : ℕ → ZMod M) :
-  List.sum (List.map f (List.finRange (N + N))) =
-  List.sum (List.map (f ∘ (fun k => 2 * k.val)) (List.finRange N)) +
-  List.sum (List.map (f ∘ (fun k => 2 * k.val + 1)) (List.finRange N)) :=
-by
-  induction' N with n ih
-  · simp
-  rw [List.finRange_succ_eq_map, List.map_cons, List.map_cons, List.sum_cons, List.sum_cons]
-  rw [List.map_map, List.map_map]
-  show
-    List.sum (List.map f (Lean.Internal.coeM (List.finRange (Nat.succ n + Nat.succ n)))) =
-    f 0 + List.sum (List.map ((f ∘ fun k => 2 * ↑k) ∘ Fin.succ) (List.finRange n)) +
-      (f (2 * 0 + 1) + List.sum (List.map ((f ∘ fun k => 2 * ↑k + 1) ∘ Fin.succ) (List.finRange n)))
-  rw [mul_zero, zero_add, ←add_assoc]
-  show
-    List.sum (List.map f (Lean.Internal.coeM (List.finRange (Nat.succ n + Nat.succ n)))) =
-    f 0 + List.sum (List.map (f ∘ fun k => 2 * k.succ.val) (List.finRange n)) +
-    f 1 + List.sum (List.map (f ∘ fun k => 2 * k.succ.val + 1) (List.finRange n))
-  sorry
 
 lemma lema (n : ℕ) (f : Fin (level n.succ) → ZMod M) :
   List.sum (List.map f (List.finRange (level n + level n))) =
   List.sum (List.map (f ∘ for_eve) (List.finRange (level n))) +
   List.sum (List.map (f ∘ for_odd) (List.finRange (level n))) :=
 by
-  let N := level n
-  show
-    List.sum (List.map f (List.finRange (N + N))) =
-    List.sum (List.map (f ∘ for_eve) (List.finRange N)) +
-    List.sum (List.map (f ∘ for_odd) (List.finRange N))
+  rw [←List.map_map, ←List.map_map, ←List.sum_append, ←List.map_append]
   sorry
 
-lemma congr_minus {a b c : ZMod M} (hbc : b = c) : a - b = a - c :=
-congrArg (HSub.hSub a) hbc
-
-theorem transform_fast_correct : transform = transform_fast := by
-  apply funext
-  intro t
-  induction' t with n ih <;> ext ω x j
+theorem transform_fast_correct (t : ℕ) (ω : ZMod M) (hyp : 0 < t → ω ^ level (t-1) = -1) : transform_fast t ω = transform t ω := by
+  revert ω
+  induction' t with n ih <;> intro ω hyp <;> ext x j
   · rw [show j = (0 : Fin 1) from Fin.ext (Fin.coe_fin_one j)]
     unfold transform transform_fast dotProduct Finset.univ Fintype.elems Fin.fintype
     simp
     rfl
-  have hyp : ω ^ level n = 1
-  · sorry
   unfold transform_fast
-  rw [←ih]
+  simp at hyp
+  specialize ih (ω * ω) (by {
+    intro nz
+    rw [mul_pow, ←pow_add]
+    rw [←Nat.sub_add_cancel nz] at hyp
+    exact hyp
+  })
+  rw [ih]
+  symm
   induction' j using Fin.addCases with i i
   · have append_lef :
       @Fin.append (level (n+0)) (level (n+0)) (ZMod M)
@@ -177,34 +157,33 @@ theorem transform_fast_correct : transform = transform_fast := by
     simp
     let a := ω ^ i.val
     convert_to
-      List.sum (List.map (fun j => a ^ j.val * x j) (List.finRange (level n + level n)))
+      List.sum (List.map (fun j => (-a) ^ j.val * x j) (List.finRange (level n + level n)))
       =
         List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n)))
-      - (a *
-        List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_odd j)) (List.finRange (level n))))
+      + (-a) *
+        List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_odd j)) (List.finRange (level n)))
     · congr
       ext k
-      rw [pow_mul, pow_add, hyp, one_mul]
-    · congr
-      · show
-          (fun j => (ω * ω) ^ (i.val * j.val) * x (for_eve j)) =
-          (fun j => a ^ (2 * j.val) * x (for_eve j))
-        ext k
-        rw [mul_pow, pow_mul]
-        show a ^ k.val * a ^ k.val * x (for_eve k) = a ^ (2 * k.val) * x (for_eve k)
-        ring
-      · show
-          (fun j => (ω * ω) ^ (i.val * j.val) * x (for_odd j)) =
-          (fun j => a ^ (2 * j.val) * x (for_odd j))
-        ext k
-        rw [mul_pow, pow_mul]
-        show a ^ k.val * a ^ k.val * x (for_odd k) = a ^ (2 * k.val) * x (for_odd k)
-        ring
+      rw [pow_mul, pow_add, hyp, neg_one_mul]
+    · rw [neg_mul, sub_eq_add_neg]
+      congr <;> ext k <;> rw [mul_pow, pow_mul, ←pow_two, ←pow_mul, mul_comm 2]
     rw [lema, ←List.sum_map_mul_left]
-    show
-      List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n))) +
-        List.sum (List.map (fun j => a ^ (2 * j.val + 1) * x (for_odd j)) (List.finRange (level n))) =
-      List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n))) -
-        List.sum (List.map (fun j => a * (a ^ (2 * j.val) * x (for_odd j))) (List.finRange (level n)))
-    --apply congr_minus
-    sorry
+    congr
+    · ext k
+      rw [Function.comp_apply]
+      show (-a) ^ (2 * k.val) * x (for_eve k) = (a ^ (2 * k.val) * x (for_eve k))
+      rw [pow_mul, neg_pow_two, ←pow_mul]
+    · ext k
+      rw [Function.comp_apply]
+      show (-a) ^ (2 * k.val + 1) * x (for_odd k) = (-a) * (a ^ (2 * k.val) * x (for_odd k))
+      rw [pow_add, pow_mul, neg_pow_two, ←pow_mul]
+      ring
+
+theorem FNTS_correct : FNTS = NTS := by
+  apply transform_fast_correct
+  decide
+
+theorem FNTT_correct : FNTT = NTT := by
+  unfold FNTT NTT
+  rw [transform_fast_correct]
+  decide
