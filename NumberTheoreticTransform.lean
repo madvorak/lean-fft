@@ -106,6 +106,8 @@ theorem transform_fast_correct : transform = transform_fast := by
     unfold transform transform_fast dotProduct Finset.univ Fintype.elems Fin.fintype
     simp
     rfl
+  have hyp : ω ^ level n = 1
+  · sorry
   unfold transform_fast
   rw [←ih]
   induction' j using Fin.addCases with i i
@@ -167,4 +169,42 @@ theorem transform_fast_correct : transform = transform_fast := by
     · apply Fin.append_right
     rw [append_rig] -- Do not apply `Fin.append_right` directly !!!
     clear append_rig
+    show
+      transform (Nat.succ n) ω x _ =
+                     (fun j => (ω * ω) ^ (i.val * j.val)) ⬝ᵥ (fun i => x (for_eve i))
+      - (ω ^ i.val * (fun j => (ω * ω) ^ (i.val * j.val)) ⬝ᵥ (fun i => x (for_odd i)))
+    unfold transform dotProduct Finset.univ Fintype.elems Fin.fintype
+    simp
+    let a := ω ^ i.val
+    convert_to
+      List.sum (List.map (fun j => a ^ j.val * x j) (List.finRange (level n + level n)))
+      =
+        List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n)))
+      - (a *
+        List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_odd j)) (List.finRange (level n))))
+    · congr
+      ext k
+      rw [pow_mul, pow_add, hyp, one_mul]
+    · congr
+      · show
+          (fun j => (ω * ω) ^ (i.val * j.val) * x (for_eve j)) =
+          (fun j => a ^ (2 * j.val) * x (for_eve j))
+        ext k
+        rw [mul_pow, pow_mul]
+        show a ^ k.val * a ^ k.val * x (for_eve k) = a ^ (2 * k.val) * x (for_eve k)
+        ring
+      · show
+          (fun j => (ω * ω) ^ (i.val * j.val) * x (for_odd j)) =
+          (fun j => a ^ (2 * j.val) * x (for_odd j))
+        ext k
+        rw [mul_pow, pow_mul]
+        show a ^ k.val * a ^ k.val * x (for_odd k) = a ^ (2 * k.val) * x (for_odd k)
+        ring
+    rw [lema, ←List.sum_map_mul_left]
+    show
+      List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n))) +
+        List.sum (List.map (fun j => a ^ (2 * j.val + 1) * x (for_odd j)) (List.finRange (level n))) =
+      List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n))) -
+        List.sum (List.map (fun j => a * (a ^ (2 * j.val) * x (for_odd j))) (List.finRange (level n)))
+    --apply congr_minus
     sorry
