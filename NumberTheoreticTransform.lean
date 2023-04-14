@@ -8,7 +8,7 @@ namespace Matrix
 
 
 --  level n = 2 ^ n
-def level : ℕ -> ℕ
+def level : ℕ → ℕ
 | 0   => 1
 | n+1 => level n + level n
 
@@ -33,19 +33,18 @@ lemma index_ok {t : ℕ} (i : Fin (level t)) : 2 * i.val + 1 < level t.succ := b
   have hi := Fin.is_lt i
   linarith
 
-def splitter {t : ℕ} (x : Fin (level (t+1)) → ZMod M) :
-  (Fin (level t) → ZMod M) × (Fin (level t) → ZMod M) :=
-Prod.mk
-  (fun (i : Fin (level t)) => x ⟨2 * i.val, Nat.lt_of_succ_lt (index_ok i)⟩)
-  (fun (i : Fin (level t)) => x ⟨2 * i.val + 1, index_ok i⟩)
+def for_eve {n : ℕ} (k : Fin (level n)) : Fin (level n.succ) :=
+⟨2 * k.val, Nat.lt_of_succ_lt (index_ok k)⟩
+
+def for_odd {n : ℕ} (k : Fin (level n)) : Fin (level n.succ) :=
+⟨2 * k.val + 1, index_ok k⟩
 
 def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (level t) → ZMod M) : (Fin (level t) → ZMod M) :=
 match t with
 | 0   => x
 | n+1 =>
-  let p := splitter x
-  let a := transform_fast n (ω * ω) p.1
-  let b := transform_fast n (ω * ω) p.2
+  let a := transform_fast n (ω * ω) (fun (i : Fin (level n)) => x (for_eve i))
+  let b := transform_fast n (ω * ω) (fun (i : Fin (level n)) => x (for_odd i))
   Fin.append
     (fun j => a j + ω ^ j.val * b j)
     (fun j => a j - ω ^ j.val * b j)
@@ -64,43 +63,64 @@ def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 #eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 -/
 
+lemma lema (n : ℕ) (f : Fin (level n.succ) → ZMod M) :
+  List.sum (List.map f (List.finRange (level n + level n))) =
+  List.sum (List.map (f ∘ for_eve) (List.finRange (level n))) +
+  List.sum (List.map (f ∘ for_odd) (List.finRange (level n))) :=
+by sorry
+
 theorem transform_fast_correct : transform = transform_fast := by
   apply funext
   intro t
-  induction' t with n ih
-  · ext ω x j
-    have jz : j = (0 : Fin 1)
+  induction' t with n ih <;> ext ω x j
+  · have jz : j = (0 : Fin 1)
     · exact Fin.ext (Fin.coe_fin_one j)
     rw [jz]
     unfold transform transform_fast dotProduct Finset.univ Fintype.elems Fin.fintype
     simp
     rfl
-  ext ω x j
   unfold transform_fast
   rw [←ih]
   induction' j using Fin.addCases with i i
   · have append_lef :
       @Fin.append (level (n+0)) (level (n+0)) (ZMod M)
-        (fun j => transform n (ω * ω) (splitter x).fst j + ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
-        (fun j => transform n (ω * ω) (splitter x).fst j - ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
-          ((Fin.castAdd (level n) : Fin (level n) ↪o Fin (level n + level n)).toEmbedding i) =
-        transform n (ω * ω) (splitter x).fst i + ω ^ i.val * transform n (ω * ω) (splitter x).snd i
+        (fun j => transform n (ω * ω) (fun i => x (for_eve i)) j + ω ^ j.val * transform n (ω * ω)
+          (fun i => x (for_odd i)) j)
+        (fun j => transform n (ω * ω) (fun i => x (for_eve i)) j - ω ^ j.val * transform n (ω * ω)
+          (fun i => x (for_odd i)) j)
+        ((Fin.castAdd (level n) : Fin (level n) ↪o Fin (level n + level n)).toEmbedding i) =
+      transform n (ω * ω) (fun i => x (for_eve i)) i + ω ^ i.val * transform n (ω * ω) (fun i => x (for_odd i)) i
     · apply Fin.append_left
     rw [append_lef] -- Do not apply `Fin.append_left` directly !!!
     clear append_lef
-    unfold transform
     show
       (fun j => ω ^ (i.val * j.val)) ⬝ᵥ x =
-                    (fun j => (ω * ω) ^ (i.val * j.val)) ⬝ᵥ (splitter x).fst
-      + ω ^ i.val * (fun j => (ω * ω) ^ (i.val * j.val)) ⬝ᵥ (splitter x).snd
+                    (fun j => (ω * ω) ^ (i.val * j.val)) ⬝ᵥ (fun i => x (for_eve i))
+      + ω ^ i.val * (fun j => (ω * ω) ^ (i.val * j.val)) ⬝ᵥ (fun i => x (for_odd i))
+    unfold dotProduct Finset.univ Fintype.elems Fin.fintype
+    simp
+    show
+      List.sum (List.map (fun j => ω ^ (i.val * j.val) * x j) (List.finRange (level n + level n)))
+      =
+        List.sum (List.map (fun j => (ω * ω) ^ (i.val * j.val) * x (for_eve j)) (List.finRange (level n)))
+      + ω ^ i.val *
+        List.sum (List.map (fun j => (ω * ω) ^ (i.val * j.val) * x (for_odd j)) (List.finRange (level n)))
+    let a := ω ^ i.val
+    convert_to
+      List.sum (List.map (fun j => a ^ j.val * x j) (List.finRange (level n + level n)))
+      =
+        List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_eve j)) (List.finRange (level n)))
+      + a *
+        List.sum (List.map (fun j => a ^ (2 * j.val) * x (for_odd j)) (List.finRange (level n)))
+    · congr
+      simp_rw [pow_mul]
+    · congr
+      · sorry
+      · sorry
+    rw [lema, ←List.sum_map_mul_left]
+    congr
+    ext k
+    unfold for_odd
     sorry
-  · have append_rig :
-      @Fin.append (level (n+0)) (level (n+0)) (ZMod M)
-        (fun j => transform n (ω * ω) (splitter x).fst j + ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
-        (fun j => transform n (ω * ω) (splitter x).fst j - ω ^ j.val * transform n (ω * ω) (splitter x).snd j)
-          ((Fin.natAdd (level n) : Fin (level n) ↪o Fin (level n + level n)).toEmbedding i) =
-        transform n (ω * ω) (splitter x).fst i - ω ^ i.val * transform n (ω * ω) (splitter x).snd i
-    · apply Fin.append_right
-    rw [append_rig] -- Do not apply `Fin.append_right` directly !!!
-    clear append_rig
+  · -- Do not apply `Fin.append_right` directly !!!
     sorry
