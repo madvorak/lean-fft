@@ -68,19 +68,18 @@ def FNTS : vektor → vektor := transform_fast e 3
 
 def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 
-/-
-#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval  NTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval FNTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval  NTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
-#eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
--/
+
+#eval  NTS (Array.get ⟨[ 4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9 ]⟩)
+#eval FNTS (Array.get ⟨[ 4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9 ]⟩)
+#eval  NTS (Array.get ⟨[ 4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9 ]⟩)
+#eval FNTS (Array.get ⟨[ 4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9 ]⟩)
+#eval  NTT (Array.get ⟨[ 1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12 ]⟩)
+#eval FNTT (Array.get ⟨[ 1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12 ]⟩)
+#eval  NTT (Array.get ⟨[ 3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0 ]⟩)
+#eval FNTT (Array.get ⟨[ 3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0 ]⟩)
+
 
 lemma vektor_memoize_id {α : Type} {n : ℕ} (f : Fin n → α) : vector_memoize f = f := by
-  ext i
   unfold vector_memoize vektor_memoize
   simp
 
