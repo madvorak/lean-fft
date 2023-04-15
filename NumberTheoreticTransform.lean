@@ -45,10 +45,14 @@ def for_eve {n : ℕ} (k : Fin (level n)) : Fin (level n.succ) :=
 def for_odd {n : ℕ} (k : Fin (level n)) : Fin (level n.succ) :=
 ⟨2 * k.val + 1, index_ok k⟩
 
--- something is very wrong the memoization (kills the performance)
-def vector_memoize {α : Type} {n : ℕ} (f : Fin n → α) : (Fin n → α) :=
+structure KyleMillerBox (α : Type) where unbox : α
+
+def vektor_memoize {α : Type} (f : Fin n → α) : KyleMillerBox (Fin n → α) :=
 let a := Array.ofFn f
-fun i => a.get (Fin.cast (Array.size_ofFn f).symm i)
+.mk fun i => a.get (Fin.cast (Array.size_ofFn f).symm i)
+
+def vector_memoize {n : ℕ} (f : Fin n → α) : Fin n → α :=
+(vektor_memoize f).unbox
 
 def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (level t) → ZMod M) : (Fin (level t) → ZMod M) :=
 match t with
@@ -77,7 +81,7 @@ def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 
 lemma vektor_memoize_id {α : Type} {n : ℕ} (f : Fin n → α) : vector_memoize f = f := by
   ext i
-  unfold vector_memoize
+  unfold vector_memoize vektor_memoize
   simp
 
 lemma take_succ_succ {m n : ℕ} (hm0 : m < n) (hm1 : m + 1 < n) :
