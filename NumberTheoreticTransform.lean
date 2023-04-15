@@ -3,6 +3,7 @@ import Mathlib.LinearAlgebra.Matrix.DotProduct
 import Mathlib.Tactic.LibrarySearch
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Cases
+import Std.Data.Array.Basic
 
 namespace Matrix
 
@@ -15,6 +16,10 @@ def level : ℕ → ℕ
 def e : ℕ := 4
 def M : ℕ := level e + 1
 def vektor : Type := Fin (level e) → ZMod M
+
+def vektor_memoize {α : Type} {n : ℕ} (f : Fin n → α) : (Fin n → α) :=
+let a := Array.ofFn f
+fun i => a.get (Fin.cast (Array.size_ofFn f).symm i)
 
 
 def transform (t : ℕ) (ω : ZMod M) (x : Fin (level t) → ZMod M) : (Fin (level t) → ZMod M) :=
@@ -48,8 +53,8 @@ def transform_fast (t : ℕ) (ω : ZMod M) (x : Fin (level t) → ZMod M) : (Fin
 match t with
 | 0   => x
 | n+1 =>
-  let a := transform_fast n (ω * ω) (fun (i : Fin (level n)) => x (for_eve i))
-  let b := transform_fast n (ω * ω) (fun (i : Fin (level n)) => x (for_odd i))
+  let a := vektor_memoize $ transform_fast n (ω * ω) (fun (i : Fin (level n)) => x (for_eve i))
+  let b := vektor_memoize $ transform_fast n (ω * ω) (fun (i : Fin (level n)) => x (for_odd i))
   Fin.append
     (fun j => a j + ω ^ j.val * b j)
     (fun j => a j - ω ^ j.val * b j)
@@ -59,15 +64,20 @@ def FNTS : vektor → vektor := transform_fast e 3
 def FNTT : vektor → vektor := negate ∘ transform_fast e 6
 
 
-#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
-#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
-#eval  NTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval FNTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
-#eval  NTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
-#eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
+--#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
+--#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 7, 7, 7, 0, 0, 9]
+--#eval  NTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
+--#eval FNTS ![4, 4, 4, 1, 1, 5, 5, 5, 5, 7, 7, 7, 7, 0, 0, 9]
+--#eval  NTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
+--#eval FNTT ![1, 6, 8, 10, 16, 15, 14, 6, 14, 0, 14, 8, 3, 3, 2, 12]
+--#eval  NTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
+--#eval FNTT ![3, 0, 9, 7, 8, 5, 10, 1, 12, 6, 13, 11, 11, 13, 6, 0]
 
+
+lemma vektor_memoize_id {α : Type} {n : ℕ} (f : Fin n → α) : vektor_memoize f = f := by
+  ext i
+  unfold vektor_memoize
+  simp
 
 lemma take_succ_succ {m n : ℕ} (hm0 : m < n) (hm1 : m + 1 < n) :
   List.take m.succ.succ (List.finRange n) = List.take m (List.finRange n) ++ [⟨m, hm0⟩, ⟨m + 1, hm1⟩] :=
@@ -84,11 +94,10 @@ by
   simp [hLfR]
 
 lemma perm_onik {α : Type} (a b x y z : List α) (hyp : a ++ b ~ x ++ y ++ z) : a ++ b ~ x ++ z ++ y := by
-  have hhh : x ++ y ++ z ~ x ++ z ++ y
-  · rw [List.append_assoc, List.append_assoc]
-    rw [List.perm_append_left_iff]
-    exact List.perm_append_comm
-  exact List.Perm.trans hyp hhh
+  apply List.Perm.trans hyp
+  rw [List.append_assoc, List.append_assoc]
+  rw [List.perm_append_left_iff]
+  exact List.perm_append_comm
 
 lemma range_perm_aux (N : ℕ) (n : ℕ) (hn : n ≤ N) : List.take (n + n) (List.finRange (N + N)) ~
     List.map (fun k => ⟨2 * k, index_ok₀ k⟩) (List.take n (List.finRange N)) ++
@@ -161,7 +170,9 @@ by
   rw [←Multiset.coe_sum, ←Multiset.coe_sum]
   exact congrArg Multiset.sum (Iff.mpr Multiset.coe_eq_coe list_map_perm)
 
-theorem transform_fast_correct (t : ℕ) (ω : ZMod M) (hyp : 0 < t → ω ^ level (t-1) = -1) : transform_fast t ω = transform t ω := by
+theorem transform_fast_correct (t : ℕ) (ω : ZMod M) (hyp : 0 < t → ω ^ level (t-1) = -1) :
+  transform_fast t ω = transform t ω :=
+by
   revert ω
   induction' t with n ih <;> intro ω hyp <;> ext x j
   · rw [show j = (0 : Fin 1) from Fin.ext (Fin.coe_fin_one j)]
@@ -169,12 +180,14 @@ theorem transform_fast_correct (t : ℕ) (ω : ZMod M) (hyp : 0 < t → ω ^ lev
     simp
     rfl
   unfold transform_fast
-  simp at hyp
+  rw [vektor_memoize_id, vektor_memoize_id]
+  specialize hyp (Iff.mp compare_gt_iff_gt rfl)
+  rw [Nat.succ_sub_succ_eq_sub, tsub_zero] at hyp
   specialize ih (ω * ω) (by {
     intro nz
     rw [mul_pow, ←pow_add]
     rw [←Nat.sub_add_cancel nz] at hyp
-    exact hyp
+    simpa using hyp
   })
   rw [ih]
   symm
